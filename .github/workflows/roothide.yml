@@ -75,11 +75,20 @@ jobs:
           rm -rf $(xcrun --sdk iphoneos --show-sdk-path)/usr/include/xpc $(xcrun --sdk iphoneos --show-sdk-path)/usr/include/xpc.modulemap
           gmake -j$(sysctl -n hw.physicalcpu)
           VERSION=$(cat ./BaseBin/_external/basebin/.version)-$(git rev-parse --short HEAD)
-          mv ./Application/Dopamine.tipa  "./Application/dopahide-enhanced-${VERSION}.tipa"
+          cp ./Application/Dopamine.ipa "./Application/dopahide-enhanced-${VERSION}.ipa"
+          mv ./Application/Dopamine.tipa "./Application/dopahide-enhanced-${VERSION}.tipa"
           echo "version=${VERSION}" >> $GITHUB_ENV
 
-      - name: Upload Artifact
-        id: dopamine-latest-upload
+      - name: Upload IPA Artifact
+        id: dopamine-ipa-upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dopahide-enhanced-${{ env.version }}.ipa
+          path: |
+            ${{ github.workspace }}/Application/dopahide-enhanced-${{ env.version }}.ipa
+
+      - name: Upload TIPA Artifact
+        id: dopamine-tipa-upload
         uses: actions/upload-artifact@v4
         with:
           name: dopahide-enhanced-${{ env.version }}.tipa
