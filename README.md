@@ -1,5 +1,7 @@
 # dopahide-enhanced
 
+original source code: https://github.com/roothide/Dopamine2-roothide
+
 an optimized fork of dopamine roothide for ios 15.0 - 16.7.x (arm64 & arm64e).
 
 roothide offers great app stealth and jailbreak detection bypass, but can cause ui lag, micro-stutters, and battery drain due to repeated hooking and ipc overhead.
