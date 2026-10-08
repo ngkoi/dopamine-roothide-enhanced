@@ -188,6 +188,22 @@ static pthread_mutex_t s_trusted_paths_lock = PTHREAD_MUTEX_INITIALIZER;
 static inline bool is_already_trusted(const char *path)
 {
 	if (!path) return true;
+
+	// Jailbreak binaries inside jbroot must be verified and have symlinks ensured
+	if (strstr(path, "/.jbroot") != NULL) {
+		uint32_t hash = 5381;
+		for (const char *p = path; *p; p++) hash = ((hash << 5) + hash) + (unsigned char)*p;
+		size_t idx = hash % TRUSTED_PATHS_CACHE_SIZE;
+
+		pthread_mutex_lock(&s_trusted_paths_lock);
+		if (s_trusted_paths_cache[idx][0] && strcmp(s_trusted_paths_cache[idx], path) == 0) {
+			pthread_mutex_unlock(&s_trusted_paths_lock);
+			return true;
+		}
+		pthread_mutex_unlock(&s_trusted_paths_lock);
+		return false;
+	}
+
 	// Fast path: system and app store paths are already signed and trusted by AMFI
 	if (strncmp(path, "/System/", 8) == 0 ||
 	    strncmp(path, "/usr/lib/", 9) == 0 ||

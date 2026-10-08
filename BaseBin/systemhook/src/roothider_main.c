@@ -62,7 +62,11 @@ void loadPathHook()
 {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-		void* roothidehooks = dlopen(JBROOT_PATH("/basebin/roothidehooks.dylib"), RTLD_NOW);
+		const char* hookPath = JBROOT_PATH("/basebin/roothidehooks.dylib");
+		void* roothidehooks = dlopen(hookPath, RTLD_NOW);
+		if (!roothidehooks) {
+			fprintf(stderr, "loadPathHook: dlopen(%s) failed: %s\n", hookPath, dlerror());
+		}
 		ASSERT(roothidehooks != NULL);
 		void (*pathhook)() = dlsym(roothidehooks, "pathhook");
 		ASSERT(pathhook != NULL);
@@ -391,13 +395,17 @@ int roothide_systemhook___execve_posthook(const char *path, char *const argv[], 
 
 static inline bool path_needs_trustcache(const char* path) {
 	if (!path) return false;
+	// Binaries inside jbroot always need trustcache verification and symlink setup!
+	if (strstr(path, "/.jbroot") != NULL) {
+		return true;
+	}
 	// Fast path: Apple system frameworks and libraries are already signed by Apple and trusted by AMFI
 	if (strncmp(path, "/System/", 8) == 0 ||
 	    strncmp(path, "/usr/lib/", 9) == 0 ||
 	    strncmp(path, "/Library/", 9) == 0) {
 		return false;
 	}
-	// App Store applications and extensions are signed by Apple/FairPlay
+	// App Store applications and extensions (outside jbroot) are signed by Apple/FairPlay
 	if (strncmp(path, "/private/var/containers/Bundle/Application/", 43) == 0 ||
 	    strncmp(path, "/var/containers/Bundle/Application/", 35) == 0) {
 		return false;
