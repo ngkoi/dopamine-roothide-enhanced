@@ -68,15 +68,18 @@ static bool _isBlacklistedProcess(pid_t pid, int pidversion)
 
     stateReadLock();
 
-    for(auto it = uncachedBlacklistedProcesses->begin(); it != uncachedBlacklistedProcesses->end(); ++it)
+    if(!uncachedBlacklistedProcesses->empty())
     {
-        pid_t uncachedPid = *(*it);
-        if(uncachedPid>0 && uncachedPid==pid)
+        for(auto it = uncachedBlacklistedProcesses->begin(); it != uncachedBlacklistedProcesses->end(); ++it)
         {
-            if(pidversion==proc_get_pidversion(uncachedPid)) {
-                blacklisted = true;
+            pid_t uncachedPid = *(*it);
+            if(uncachedPid>0 && uncachedPid==pid)
+            {
+                if(pidversion==proc_get_pidversion(uncachedPid)) {
+                    blacklisted = true;
+                }
+                break;
             }
-            break;
         }
     }
 

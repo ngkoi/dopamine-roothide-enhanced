@@ -913,8 +913,14 @@ bool is_apple_internal_identifier(const char* identifier)
 {
     if(!identifier || !*identifier) return false;
     
-    for(NSString* item in APPLE_INTERNAL_IDENTIFIERS) {
-        if([@(identifier) hasPrefix:item]) {
+    static const char *const s_internal_prefixes[] = {
+        "com.apple.atrun",
+        "com.apple.kdumpd",
+        "com.apple.Terminal",
+        NULL
+    };
+    for (int i = 0; s_internal_prefixes[i] != NULL; i++) {
+        if (strncmp(identifier, s_internal_prefixes[i], strlen(s_internal_prefixes[i])) == 0) {
             return true;
         }
     }

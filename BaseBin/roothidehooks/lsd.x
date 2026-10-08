@@ -91,7 +91,7 @@ static const void *kBlockSchemeTagKey = &kBlockSchemeTagKey;
 		NSLog(@"canOpenURL:%@ publicSchemes:%d privateSchemes:%d XPCConnection:%@ proc:%d,%s", url, ispublic, isprivate, connection, pid, proc_get_path(pid,NULL));
 		//if(connection) NSLog(@"canOpenURL connection=%@", connection);
 
-		if(jbclient_blacklist_check_pid(pid)==true)
+		if(cached_blacklist_check_pid(pid)==true)
 		{
 			if(isJailbreakURLScheme(url.scheme))
 			{
@@ -130,7 +130,7 @@ static const void *kBlockSchemeTagKey = &kBlockSchemeTagKey;
 
 		NSLog(@"_LSDOpenClient openApplicationWithIdentifier:%@ options:%@ useClientProcessHandle:%d completionHandler:%p XPCConnection=%p proc:%d,%s", identifier, options, useClientProcessHandle, completionHandler, self.XPCConnection, pid, proc_get_path(pid,NULL));
 
-		if(jbclient_blacklist_check_pid(pid)==true)
+		if(cached_blacklist_check_pid(pid)==true)
 		{
 			LSApplicationProxy* appProxy = [NSClassFromString(@"LSApplicationProxy") applicationProxyForIdentifier:identifier];
 			if(appProxy && isJailbreakBundlePath(appProxy.bundleURL.path.fileSystemRepresentation))
@@ -168,7 +168,7 @@ static const void *kBlockSchemeTagKey = &kBlockSchemeTagKey;
 
 		NSLog(@"_LSDOpenClient openURL:%@ fileHandle:%@ options:%@ completionHandler:%p XPCConnection=%p proc:%d,%s", url, fileHandle, options, completionHandler, self.XPCConnection, pid, proc_get_path(pid,NULL));
 
-		if(jbclient_blacklist_check_pid(pid)==true)
+		if(cached_blacklist_check_pid(pid)==true)
 		{
 			if(isJailbreakURLScheme(url.scheme))
 			{
@@ -205,7 +205,7 @@ static const void *kBlockSchemeTagKey = &kBlockSchemeTagKey;
 
 		NSLog(@"_LSDOpenClient openURL:%@ options:%@ completionHandler:%p XPCConnection=%p proc:%d,%s", url, options, completionHandler, self.XPCConnection, pid, proc_get_path(pid,NULL));
 
-		if(jbclient_blacklist_check_pid(pid)==true)
+		if(cached_blacklist_check_pid(pid)==true)
 		{
 			if(isJailbreakURLScheme(url.scheme))
 			{
@@ -273,7 +273,7 @@ static pid_t utrClientPid(_LSDReadClient* client)
 static BOOL utrHideClientBlacklisted(_LSDReadClient* client)
 {
 	pid_t pid = utrClientPid(client);
-	if(pid>0 && jbclient_blacklist_check_pid(pid)) {
+	if(pid>0 && cached_blacklist_check_pid(pid)) {
 		return YES;
 	}
 	return NO;
@@ -544,7 +544,7 @@ typedef void (^UTRConformBlock)(intptr_t unitID, const void* unitBytes, intptr_t
 
 	pid_t pid = connection.processIdentifier;
 
-	if(jbclient_blacklist_check_pid(pid)==false) {
+	if(cached_blacklist_check_pid(pid)==false) {
 		return result;
 	}
 

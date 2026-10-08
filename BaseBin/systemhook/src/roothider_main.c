@@ -389,10 +389,27 @@ int roothide_systemhook___execve_posthook(const char *path, char *const argv[], 
 	return ret;
 }
 
+static inline bool path_needs_trustcache(const char* path) {
+	if (!path) return false;
+	// Fast path: Apple system frameworks and libraries are already signed by Apple and trusted by AMFI
+	if (strncmp(path, "/System/", 8) == 0 ||
+	    strncmp(path, "/usr/lib/", 9) == 0 ||
+	    strncmp(path, "/Library/", 9) == 0) {
+		return false;
+	}
+	// App Store applications and extensions are signed by Apple/FairPlay
+	if (strncmp(path, "/private/var/containers/Bundle/Application/", 43) == 0 ||
+	    strncmp(path, "/var/containers/Bundle/Application/", 35) == 0) {
+		return false;
+	}
+	// Only binaries inside jbroot need trustcache verification
+	return true;
+}
+
 void* (*dyld_dlopen_orig)(void *dyld, const char* path, int mode);
 void* dyld_dlopen_hook(void *dyld, const char* path, int mode)
 {
-	if (path && !(mode & RTLD_NOLOAD)) {
+	if (path && !(mode & RTLD_NOLOAD) && path_needs_trustcache(path)) {
 		jbclient_trust_library_recurse(path, __builtin_return_address(0));
 	}
     __attribute__((musttail)) return dyld_dlopen_orig(dyld, path, mode);
@@ -401,7 +418,7 @@ void* dyld_dlopen_hook(void *dyld, const char* path, int mode)
 void* (*dyld_dlopen_from_orig)(void *dyld, const char* path, int mode, void* addressInCaller);
 void* dyld_dlopen_from_hook(void *dyld, const char* path, int mode, void* addressInCaller)
 {
-	if (path && !(mode & RTLD_NOLOAD)) {
+	if (path && !(mode & RTLD_NOLOAD) && path_needs_trustcache(path)) {
 		jbclient_trust_library_recurse(path, addressInCaller);
 	}
 	__attribute__((musttail)) return dyld_dlopen_from_orig(dyld, path, mode, addressInCaller);
@@ -410,7 +427,7 @@ void* dyld_dlopen_from_hook(void *dyld, const char* path, int mode, void* addres
 void* (*dyld_dlopen_audited_orig)(void *dyld, const char* path, int mode);
 void* dyld_dlopen_audited_hook(void *dyld, const char* path, int mode)
 {
-	if (path && !(mode & RTLD_NOLOAD)) {
+	if (path && !(mode & RTLD_NOLOAD) && path_needs_trustcache(path)) {
 		jbclient_trust_library_recurse(path, __builtin_return_address(0));
 	}
 	__attribute__((musttail)) return dyld_dlopen_audited_orig(dyld, path, mode);
@@ -419,7 +436,7 @@ void* dyld_dlopen_audited_hook(void *dyld, const char* path, int mode)
 bool (*dyld_dlopen_preflight_orig)(void *dyld, const char *path);
 bool dyld_dlopen_preflight_hook(void *dyld, const char* path)
 {
-	if (path) {
+	if (path && path_needs_trustcache(path)) {
 		jbclient_trust_library_recurse(path, __builtin_return_address(0));
 	}
 	__attribute__((musttail)) return dyld_dlopen_preflight_orig(dyld, path);

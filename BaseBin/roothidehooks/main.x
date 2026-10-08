@@ -2,9 +2,6 @@
 #import <mach-o/dyld.h>
 #include "common.h"
 
-#ifndef DEBUG
-#define NSLog(args...)	
-#endif
 
 NSString* safe_getExecutablePath()
 {

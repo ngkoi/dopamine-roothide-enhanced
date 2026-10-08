@@ -260,7 +260,21 @@ int roothide_launchd___posix_spawn_posthook(pid_t *restrict pidp, const char *re
 
 	if (ret == 0 && pid > 0) {
 		if(should_suspend) {
-			if(jbdSpawnPatchChild(pid, should_resume) != 0) {
+			int patch_ret = -1;
+			if (!dyld_patch_enabled() && !process_force_dyld_patch(path, (const char**)argv)) {
+				// Fast path: apply CS_GET_TASK_ALLOW directly via kernel primitives in launchd
+				// This avoids an expensive synchronous XPC round-trip + context-switch to jailbreakd
+				if (proc_patch_csflags(pid) == 0) {
+					if (should_resume) kill(pid, SIGCONT);
+					patch_ret = 0;
+				}
+			}
+			if (patch_ret != 0) {
+				// Fallback to jailbreakd for full dyld_patch or WebContent remapping
+				patch_ret = jbdSpawnPatchChild(pid, should_resume);
+			}
+
+			if(patch_ret != 0) {
 				JBLogError("Failed to patch spawned process (%d) %s", pid, path);
 				//just kill it instead of letting it hang forever so that launchd can respawn it later
 				kill(pid, SIGQUIT); //core dump

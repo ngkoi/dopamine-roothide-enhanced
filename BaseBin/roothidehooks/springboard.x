@@ -7,8 +7,14 @@
 	if (cmd == F_SETPROTECTIONCLASS) {
 		char filePath[PATH_MAX];
 		if (fcntl(fildes, F_GETPATH, filePath) != -1) {
-			// Skip setting protection class on jailbreak apps, this doesn't work and causes snapshots to not be saved correctly
-			if (isSubPathOf(filePath, jbroot("/var/mobile/Library/SplashBoard/Snapshots/"))) {
+			// Fast prefix check: match Rootless Dopamine, avoid expensive realpath() disk syscalls during app transitions
+			static char jbSnapshotsPath[PATH_MAX] = {0};
+			static dispatch_once_t onceToken;
+			dispatch_once(&onceToken, ^{
+				const char *jb = jbroot("/var/mobile/Library/SplashBoard/Snapshots/");
+				if (jb) strlcpy(jbSnapshotsPath, jb, sizeof(jbSnapshotsPath));
+			});
+			if (jbSnapshotsPath[0] && strncmp(filePath, jbSnapshotsPath, strlen(jbSnapshotsPath)) == 0) {
 				return 0;
 			}
 		}
@@ -94,14 +100,12 @@ static const void *kDenyQueryTagKey = &kDenyQueryTagKey;
 	id currentContext = [NSClassFromString(@"BSServiceConnection") performSelector:@selector(currentContext)];
 	id remoteProcess = [currentContext performSelector:@selector(remoteProcess)]; //BSProcessHandle
 
-	NSNumber* _pid = [remoteProcess valueForKey:@"_pid"];
-	NSString* _bundleID = [remoteProcess valueForKey:@"_bundleID"]; //may be nil
+#pragma GCC diagnostic ignored "-Wunused-variable"
 
+	NSNumber* _pid = [remoteProcess valueForKey:@"_pid"];
 	pid_t pid = _pid.intValue;
 
-	NSLog(@"openApplication %@ from pid=%d bundleID=%@", bundleIdentifier, pid, _bundleID);
-
-	if(jbclient_blacklist_check_pid(pid)==true) {
+	if(cached_blacklist_check_pid(pid)==true) {
 		NSLog(@"openApplication deny request from %@", _bundleID);
 		objc_setAssociatedObject(bundleIdentifier, kDenyQueryTagKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}

@@ -287,6 +287,12 @@
 					<key>link</key>
 					<string>https://github.com/kirb</string>
 				</dict>
+				<dict>
+					<key>name</key>
+					<string>ngkhoi (dopahide-enhanced)</string>
+					<key>link</key>
+					<string>https://github.com/ngkhoi</string>
+				</dict>
 			</array>
 		</dict>
 		<dict>

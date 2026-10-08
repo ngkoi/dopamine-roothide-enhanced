@@ -178,9 +178,57 @@ int jbclient_trust_executable_recurse(const char *executablePath, xpc_object_t p
 
 extern const char* dyld_image_path_containing_address(const void* addr);
 
+#include <pthread.h>
+#include <string.h>
+
+#define TRUSTED_PATHS_CACHE_SIZE 128
+static char s_trusted_paths_cache[TRUSTED_PATHS_CACHE_SIZE][PATH_MAX];
+static pthread_mutex_t s_trusted_paths_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static inline bool is_already_trusted(const char *path)
+{
+	if (!path) return true;
+	// Fast path: system and app store paths are already signed and trusted by AMFI
+	if (strncmp(path, "/System/", 8) == 0 ||
+	    strncmp(path, "/usr/lib/", 9) == 0 ||
+	    strncmp(path, "/Library/", 9) == 0 ||
+	    strncmp(path, "/private/var/containers/Bundle/Application/", 43) == 0 ||
+	    strncmp(path, "/var/containers/Bundle/Application/", 35) == 0) {
+		return true;
+	}
+
+	uint32_t hash = 5381;
+	for (const char *p = path; *p; p++) hash = ((hash << 5) + hash) + (unsigned char)*p;
+	size_t idx = hash % TRUSTED_PATHS_CACHE_SIZE;
+
+	pthread_mutex_lock(&s_trusted_paths_lock);
+	if (s_trusted_paths_cache[idx][0] && strcmp(s_trusted_paths_cache[idx], path) == 0) {
+		pthread_mutex_unlock(&s_trusted_paths_lock);
+		return true;
+	}
+	pthread_mutex_unlock(&s_trusted_paths_lock);
+	return false;
+}
+
+static inline void mark_path_trusted(const char *path)
+{
+	if (!path) return;
+	uint32_t hash = 5381;
+	for (const char *p = path; *p; p++) hash = ((hash << 5) + hash) + (unsigned char)*p;
+	size_t idx = hash % TRUSTED_PATHS_CACHE_SIZE;
+
+	pthread_mutex_lock(&s_trusted_paths_lock);
+	strlcpy(s_trusted_paths_cache[idx], path, PATH_MAX);
+	pthread_mutex_unlock(&s_trusted_paths_lock);
+}
+
 int jbclient_trust_library_recurse(const char *libraryPath, void *addressInCaller)
 {
 	if (!libraryPath) return -1;
+
+	if (is_already_trusted(libraryPath)) {
+		return 0;
+	}
 
 	if (_dyld_shared_cache_contains_path(libraryPath)) {
 		return -1;
@@ -224,6 +272,9 @@ int jbclient_trust_library_recurse(const char *libraryPath, void *addressInCalle
 	if (xreply) {
 		int64_t result = xpc_dictionary_get_int64(xreply, "result");
 		xpc_release(xreply);
+		if (result == 0) {
+			mark_path_trusted(libraryPath);
+		}
 		return result;
 	}
 	return -1;

@@ -3,9 +3,6 @@
 #include <roothide.h>
 #include "common.h"
 
-#ifndef DEBUG
-#define NSLog(args...)	
-#endif
 
 CFURLRef (*orig__CFCopyHomeDirURLForUser)(const char *username, bool fallBackToHome) = NULL;
 CFURLRef new__CFCopyHomeDirURLForUser(const char *username, bool fallBackToHome)
